@@ -82,7 +82,7 @@ jobs:
       - run:
           name: "Run Playwright"
           command: |
-            npx playwright test
+            PWDEBUG=console npx playwright test
 
 workflows:
   main:
