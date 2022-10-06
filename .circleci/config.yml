@@ -1,0 +1,96 @@
+version: 2.1
+
+orbs:
+  php: circleci/php@1.1.0
+  node: circleci/node@5.0.3
+  browser-tools: circleci/browser-tools@1.4.0
+
+commands:
+  setup-wp-cli:
+    description: "Setup WP-CLI via composer global"
+    steps:
+      - php/install-composer
+      - run:
+          name: "Install WP-CLI via composer global require"
+          command: |
+            composer global require wp-cli/wp-cli-bundle
+      - run:
+          name: "Add wp-cli to PATH"
+          command: |
+            export PATH="$PATH:$HOME/.composer/vendor/bin"
+  prepare-mysql:
+    description: "Ensure mysql client is installed and ready"
+    steps:
+      - run:
+          name: Install mysql_client
+          command: |
+            sudo apt-get update -yq
+            sudo apt-get install default-mysql-client
+      - run:
+          # Our primary container isn't MYSQL so run a sleep command until it's ready.
+          name: Waiting for MySQL to be ready
+          command: |
+            for i in `seq 1 10`;
+            do
+              nc -z 127.0.0.1 3306 && echo Success && exit 0
+              echo -n .
+              sleep 1
+            done
+            echo Failed waiting for MySQL && exit 1
+
+jobs:
+  run_e2e_tests:
+    parameters:
+      php-version:
+        type: string
+        default: "8.0"
+      wordpress-version:
+        type: string
+        default: "latest"
+    docker:
+      - image: cimg/php:<<parameters.php-version>>-browsers
+      - image: cimg/mysql:5.7
+        environment:
+          MYSQL_ROOT_PASSWORD: wordpress
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+    steps:
+      - checkout
+      - run:
+          name: "Setup env"
+          command: |
+            mv cypress.env.json.circleci cypress.env.json
+            cat cypress.env.json
+      - setup-wp-cli
+      - node/install
+      - node/install-packages
+      - prepare-mysql
+      - run:
+          name: "Setup WordPress"
+          command: |
+            mkdir -p /tmp/wordpress
+            wp core download --version=<<parameters.wordpress-version>> --path=/tmp/wordpress --skip-content
+            wp config create --path=/tmp/wordpress --dbname=wordpress --dbuser=root --dbpass=wordpress --dbhost=127.0.0.1:3306 --force --extra-php \<<PHP
+            define( 'WP_SITEURL', 'http://localhost:5501' );
+            define( 'WP_HOME', 'http://localhost:5501' );
+            PHP
+            wp core install --path=/tmp/wordpress --url=http://localhost:5501 --title="WPE Headless Testing" --admin_user=admin --admin_password=password --admin_email=admin@example.com --skip-email
+      - run:
+          name: "Start php server"
+          command: |
+            php -S localhost:5501 -t /tmp/wordpress
+          background: true
+      - run:
+          name: "Run Cypress"
+          command: |
+            npm run cypress:run:headless
+      - store_artifacts:
+          path: cypress/screenshots
+
+workflows:
+  main:
+    jobs:
+      - run_e2e_tests:
+          php-version: "7.4"
+          wordpress-version: "5.9"
