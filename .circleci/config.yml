@@ -90,5 +90,5 @@ workflows:
       - run_e2e_tests:
           matrix:
             parameters:
-              php-version: [ '7.4', '8.0' ]
-              wordpress-version: [ '5.9', 'latest' ]
+              php-version: [ "7.4", "8.0" ]
+              wordpress-version: [ "5.9", "latest" ]
