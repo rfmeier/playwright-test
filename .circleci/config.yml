@@ -47,7 +47,7 @@ jobs:
         type: string
         default: "latest"
     docker:
-      - image: cimg/php:<<parameters.php-version>>
+      - image: cimg/php:<<parameters.php-version>>-browsers
       - image: cimg/mysql:5.7
         environment:
           MYSQL_ROOT_PASSWORD: wordpress
