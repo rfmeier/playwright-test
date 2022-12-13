@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "main": "Gruntfile.js",
   "author": "YOUR NAME HERE",
-  "scripts": {},
+  "scripts": {
+    "e2e": "playwright test --workers=1"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.26.1"
+    "@playwright/test": "^1.27.1"
   }
 }
